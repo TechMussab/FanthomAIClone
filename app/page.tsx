@@ -20,6 +20,13 @@ export default function DashboardPage() {
         if (response.ok) {
           const userData = await response.json()
           setUser(userData)
+
+          // Check onboarding status
+          const onboardingComplete = localStorage.getItem('fathom_onboarding_complete')
+          if (!onboardingComplete) {
+            router.push('/onboarding')
+            return
+          }
         } else {
           router.push('/login')
         }
@@ -97,12 +104,23 @@ export default function DashboardPage() {
               <p className="text-xs text-gray-600 mb-1">Logged in as</p>
               <p className="text-sm font-medium text-gray-900">{user.name}</p>
               <p className="text-xs text-gray-600">{user.email}</p>
-              <button
-                onClick={() => logoutAction()}
-                className="mt-3 w-full px-3 py-2 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100 font-medium"
-              >
-                Sign Out
-              </button>
+              <div className="space-y-2 mt-3">
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('fathom_onboarding_complete')
+                    router.push('/onboarding')
+                  }}
+                  className="w-full px-3 py-2 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100 font-medium"
+                >
+                  Replay Onboarding
+                </button>
+                <button
+                  onClick={() => logoutAction()}
+                  className="w-full px-3 py-2 text-xs bg-red-50 text-red-700 rounded hover:bg-red-100 font-medium"
+                >
+                  Sign Out
+                </button>
+              </div>
             </div>
           )}
         </div>
