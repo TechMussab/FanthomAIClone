@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "onPrompt": {
+      "command": "powershell",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ".claude/capture.ps1", "-EventType", "onPrompt"],
+      "captureStdin": true
+    },
+    "onTurnEnd": {
+      "command": "powershell",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ".claude/capture.ps1", "-EventType", "onTurnEnd"],
+      "captureStdin": true
+    }
+  }
+}
