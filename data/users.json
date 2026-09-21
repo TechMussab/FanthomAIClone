@@ -1,0 +1,16 @@
+[
+  {
+    "id": "1",
+    "email": "demo@fathom.com",
+    "password": "demo123",
+    "name": "Demo User",
+    "createdAt": "2024-09-21T00:00:00.000Z"
+  },
+  {
+    "id": "1789965854011",
+    "email": "example@example.com",
+    "password": "example",
+    "name": "jd",
+    "createdAt": "2026-09-21T04:44:14.011Z"
+  }
+]
