@@ -1,8 +1,9 @@
 'use client'
 
-import { meetings } from '@/src/data/meetings'
-import { useState, useRef, use } from 'react'
+import { meetings, ytArchitectureMeeting } from '@/src/data/meetings'
+import { useState, useRef, use, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import YouTube, { YouTubeProps } from 'react-youtube'
 
 interface MeetingDetailPageProps {
   params: Promise<{
@@ -10,15 +11,28 @@ interface MeetingDetailPageProps {
   }>
 }
 
+type MeetingType = typeof meetings[0] | typeof ytArchitectureMeeting
+
 export default function MeetingDetailPage({ params }: MeetingDetailPageProps) {
   const { id } = use(params)
-  const meeting = meetings.find((m) => m.id === id)
+
+  // Support both regular meetings and YouTube meetings
+  let meeting: MeetingType | undefined
+  if (id === 'meeting-mvvm-vs-mvi') {
+    meeting = ytArchitectureMeeting
+  } else {
+    meeting = meetings.find((m) => m.id === id)
+  }
+
   const videoRef = useRef<HTMLVideoElement>(null)
+  const youtubeRef = useRef<any>(null)
   const [currentTime, setCurrentTime] = useState(0)
   const [summaryTab, setSummaryTab] = useState<'executive' | 'engineering' | 'sales' | 'actionItems'>(
     'executive'
   )
   const [showShareModal, setShowShareModal] = useState(false)
+
+  const isYouTube = meeting && 'type' in meeting && meeting.type === 'youtube'
 
   if (!meeting) {
     return (
@@ -33,21 +47,42 @@ export default function MeetingDetailPage({ params }: MeetingDetailPageProps) {
     )
   }
 
-  const handleTranscriptClick = (timestamp: number) => {
-    if (videoRef.current) {
+  const handleTranscriptClick = useCallback((timestamp: number) => {
+    if (isYouTube && youtubeRef.current) {
+      youtubeRef.current.internalPlayer?.seekTo(timestamp, true)
+    } else if (!isYouTube && videoRef.current) {
       videoRef.current.currentTime = timestamp
     }
-  }
+  }, [isYouTube])
 
-  const handleVideoTimeUpdate = () => {
-    if (videoRef.current) {
+  const handleVideoTimeUpdate = useCallback(() => {
+    if (!isYouTube && videoRef.current) {
       setCurrentTime(videoRef.current.currentTime)
     }
-  }
+  }, [isYouTube])
+
+  const handleYouTubeStateChange = useCallback((event: any) => {
+    if (event.target?.getCurrentTime) {
+      setCurrentTime(event.target.getCurrentTime())
+    }
+  }, [])
 
   const shareUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/share/${meeting.id}`
     : `/share/${meeting.id}`
+
+  // Get transcript field name (YouTube uses startSeconds, regular meetings use timestamp)
+  const getTimestampField = (entry: any): number => {
+    return 'startSeconds' in entry ? entry.startSeconds : entry.timestamp
+  }
+
+  const opts: YouTubeProps['opts'] = {
+    height: '390',
+    width: '100%',
+    playerVars: {
+      autoplay: 0,
+    },
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -107,7 +142,8 @@ export default function MeetingDetailPage({ params }: MeetingDetailPageProps) {
                 year: 'numeric',
               })}
               {' · '}
-              {Math.floor(meeting.duration / 60)} minutes
+              {typeof meeting.duration === 'string' ? meeting.duration : `${Math.floor(meeting.duration / 60)} minutes`}
+              {isYouTube && ' · YouTube Video'}
             </p>
           </div>
           <button
@@ -123,48 +159,66 @@ export default function MeetingDetailPage({ params }: MeetingDetailPageProps) {
           {/* Video & Transcript Section */}
           <div className="flex-1 flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
             {/* Video Player */}
-            <div className="bg-black aspect-video">
-              <video
-                ref={videoRef}
-                src={meeting.videoUrl}
-                onTimeUpdate={handleVideoTimeUpdate}
-                controls
-                className="w-full h-full"
-              />
+            <div className="bg-black">
+              {isYouTube ? (
+                <YouTube
+                  videoId={'youtubeId' in meeting ? meeting.youtubeId : ''}
+                  opts={opts}
+                  onStateChange={handleYouTubeStateChange}
+                  ref={youtubeRef}
+                />
+              ) : (
+                <video
+                  ref={videoRef}
+                  src={meeting.videoUrl || undefined}
+                  onTimeUpdate={handleVideoTimeUpdate}
+                  controls
+                  className="w-full"
+                />
+              )}
             </div>
 
             {/* Transcript */}
             <div className="flex-1 overflow-y-auto p-4">
               <h3 className="font-semibold text-gray-900 mb-3">Transcript</h3>
               <div className="space-y-3">
-                {meeting.transcript.map((entry, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => handleTranscriptClick(entry.timestamp)}
-                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                      Math.abs(currentTime - entry.timestamp) < 2
-                        ? 'bg-blue-50 border border-blue-200'
-                        : 'hover:bg-gray-50 border border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-start gap-2">
-                      <img
-                        src={entry.avatar}
-                        alt={entry.speaker}
-                        className="w-8 h-8 rounded-full flex-shrink-0 mt-1"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-900">{entry.speaker}</span>
-                          <span className="text-xs text-gray-500">
-                            {Math.floor(entry.timestamp / 60)}:{(entry.timestamp % 60).toString().padStart(2, '0')}
-                          </span>
+                {meeting.transcript.map((entry, idx) => {
+                  const timestamp = getTimestampField(entry)
+                  const speaker = 'speaker' in entry ? entry.speaker : "Unknown Speaker"
+                  const text = 'text' in entry ? entry.text : ""
+                  const avatar = 'avatar' in entry ? entry.avatar : (entry as any).avatar
+
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => handleTranscriptClick(timestamp)}
+                      className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                        Math.abs(currentTime - timestamp) < 2
+                          ? 'bg-blue-50 border border-blue-200'
+                          : 'hover:bg-gray-50 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        {avatar && (
+                          <img
+                            src={avatar}
+                            alt={speaker}
+                            className="w-8 h-8 rounded-full flex-shrink-0 mt-1"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900">{speaker}</span>
+                            <span className="text-xs text-gray-500">
+                              {Math.floor(timestamp / 60)}:{(timestamp % 60).toString().padStart(2, '0')}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700 mt-1">{text}</p>
                         </div>
-                        <p className="text-sm text-gray-700 mt-1">{entry.text}</p>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -207,8 +261,14 @@ export default function MeetingDetailPage({ params }: MeetingDetailPageProps) {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-gray-700 leading-relaxed">
-                    {meeting.summaries[summaryTab]}
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    {summaryTab === 'executive'
+                      ? meeting.summaries.executive
+                      : summaryTab === 'engineering'
+                        ? meeting.summaries.engineering
+                        : 'sales' in meeting.summaries
+                          ? meeting.summaries.sales
+                          : ''}
                   </p>
                 )}
               </div>
@@ -219,7 +279,7 @@ export default function MeetingDetailPage({ params }: MeetingDetailPageProps) {
               <h3 className="font-semibold text-gray-900 mb-4">Attendees</h3>
               <div className="space-y-2">
                 {meeting.attendees.map((attendee) => (
-                  <div key={attendee.id} className="flex items-center gap-2">
+                  <div key={attendee.id || attendee.name} className="flex items-center gap-2">
                     <img
                       src={attendee.avatar}
                       alt={attendee.name}
@@ -233,27 +293,6 @@ export default function MeetingDetailPage({ params }: MeetingDetailPageProps) {
                 ))}
               </div>
             </div>
-
-            {/* Highlights */}
-            {meeting.highlights.length > 0 && (
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Highlights</h3>
-                <div className="space-y-2">
-                  {meeting.highlights.map((highlight) => (
-                    <button
-                      key={highlight.id}
-                      onClick={() => handleTranscriptClick(highlight.timestamp)}
-                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 border border-gray-200 transition-colors"
-                    >
-                      <p className="text-sm font-medium text-gray-900">{highlight.title}</p>
-                      <p className="text-xs text-gray-500">
-                        {Math.floor(highlight.timestamp / 60)}:{(highlight.timestamp % 60).toString().padStart(2, '0')}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </main>

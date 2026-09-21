@@ -97,6 +97,37 @@ const attendees = {
     email: 'henry@company.com',
   },
 }
+// for testing youtube video meeting data, this is a real youtube video with a transcript and summary
+export const ytArchitectureMeeting = {
+  id: "meeting-mvvm-vs-mvi",
+  title: "Android Architecture Review: MVVM vs MVI Pattern Analysis",
+  date: "2026-09-21T10:00:00Z",
+  duration: 1840,
+  type: "youtube",
+  youtubeId: "b2z1jvD4VMQ",
+  attendees: [
+    { id: "8", name: "Philipp Lackner", avatar: "https://i.pravatar.cc/150?u=philipp", role: "Lead Mobile Architect" }
+  ],
+  videoUrl: null, // YouTube video URL will be constructed from youtubeId
+  transcript: [
+    { id: "t1", startSeconds: 0, speaker: "Philipp Lackner", text: "Welcome back! Today we are comparing MVVM vs MVI in Android native development once and for all." },
+    { id: "t2", startSeconds: 92, speaker: "Philipp Lackner", text: "Both MVVM (Model-View-ViewModel) and MVI (Model-View-Intent) are presentational patterns meant to separate your presentation layer." },
+    { id: "t3", startSeconds: 140, speaker: "Philipp Lackner", text: "In both patterns, the Model implements project-wide business rules and logic, like Data Classes in Kotlin." },
+    { id: "t4", startSeconds: 281, speaker: "Philipp Lackner", text: "The View refers strictly to the UI layer—whether XML layouts, View classes, or Jetpack Compose composables." },
+    { id: "t5", startSeconds: 304, speaker: "Philipp Lackner", text: "The ViewModel contains state mapping logic and processes incoming UI actions to update state." },
+    { id: "t6", startSeconds: 367, speaker: "Philipp Lackner", text: "In MVVM, each UI state property is exposed as an individual State flow or reference." },
+    { id: "t7", startSeconds: 484, speaker: "Philipp Lackner", text: "In MVI, all screen states are bundled into a single immutable UI State wrapper class with an Intent/Action sealed interface." },
+    { id: "t8", startSeconds: 965, speaker: "Philipp Lackner", text: "MVI gives better readability because you can inspect the full state class in 5 lines of code." }
+  ],
+  summaries: {
+    executive: "Detailed architectural breakdown comparing MVVM and MVI presentational patterns. Highlighted how MVI improves readability via single immutable UI state wrappers and Intent sealed interfaces.",
+    engineering: "1. Presentation Layer Scope: MVVM/MVI only manage UI/ViewModel presentation, not clean architecture domain/data layers.\n2. State Management: MVVM uses multiple StateFlows; MVI uses a unified UIState copy data class.\n3. User Actions: MVI encapsulates UI interactions inside an `onAction` sealed interface.",
+    actionItems: [
+      "Standardize UI state wrapper pattern across Jetpack Compose screens",
+      "Evaluate migration of multi-state flows to MVI single state representations"
+    ]
+  }
+};
 
 export const meetings: Meeting[] = [
   {

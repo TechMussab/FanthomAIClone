@@ -1,6 +1,6 @@
 'use client'
 
-import { meetings } from '@/src/data/meetings'
+import { meetings, ytArchitectureMeeting } from '@/src/data/meetings'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { logoutAction } from '@/lib/actions'
@@ -41,12 +41,18 @@ export default function DashboardPage() {
     )
   }
 
-  const filteredMeetings = meetings.filter((meeting) => {
+  // Combine regular meetings with YouTube meeting
+  const allMeetings = [ytArchitectureMeeting, ...meetings]
+
+  const filteredMeetings = allMeetings.filter((meeting) => {
     const query = searchQuery.toLowerCase()
     return (
       meeting.title.toLowerCase().includes(query) ||
       meeting.attendees.some((a) => a.name.toLowerCase().includes(query)) ||
-      meeting.transcript.some((t) => t.text.toLowerCase().includes(query))
+      meeting.transcript.some((t) => {
+        const text = 'text' in t ? t.text : ''
+        return text.toLowerCase().includes(query)
+      })
     )
   })
 
@@ -137,7 +143,7 @@ export default function DashboardPage() {
                         year: 'numeric',
                       })}
                       {' · '}
-                      {Math.floor(meeting.duration / 60)} min
+                      {Math.floor(Number(meeting.duration) / 60)} min
                     </p>
                   </div>
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
