@@ -46,8 +46,8 @@ export default function MeetingDetailPage({ params }: MeetingDetailPageProps) {
   }
 
   const shareUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/shared/${meeting.id}`
-    : `/shared/${meeting.id}`
+    ? `${window.location.origin}/share/${meeting.id}`
+    : `/share/${meeting.id}`
 
   return (
     <div className="flex h-screen bg-gray-50">
