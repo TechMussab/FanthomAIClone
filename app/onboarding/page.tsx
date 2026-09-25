@@ -22,7 +22,7 @@ export default function OnboardingPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: 'demo-user', // In production, get from auth context
+          user_id: 'demo-user',
           team_size: teamSize,
           invited_emails: emails.filter(e => e.trim() !== ''),
           share_existing: shareExisting,
@@ -40,7 +40,6 @@ export default function OnboardingPage() {
       console.error('[Onboarding] Error saving data:', error)
     }
 
-    // Mark onboarding complete in localStorage
     localStorage.setItem('fathom_onboarding_complete', 'true')
     router.push('/')
   }
@@ -77,12 +76,18 @@ export default function OnboardingPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
+    <div className="min-h-screen bg-slate-950 flex flex-col">
+      {/* Background accents */}
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 right-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl"></div>
+      </div>
+
       {/* Header */}
-      <header className="p-6 flex items-center justify-between">
+      <header className="relative p-6 flex items-center justify-between border-b border-slate-800">
         <button
           onClick={completeOnboarding}
-          className="text-sm text-gray-600 hover:text-gray-900 font-medium"
+          className="text-sm text-slate-400 hover:text-slate-200 font-medium transition-colors"
         >
           EXIT SETUP
         </button>
@@ -90,8 +95,8 @@ export default function OnboardingPage() {
           {[1, 2, 3, 4].map((s) => (
             <div
               key={s}
-              className={`w-2 h-2 rounded-full ${
-                s <= step ? 'bg-blue-600' : 'bg-gray-300'
+              className={`w-2 h-2 rounded-full transition-colors ${
+                s <= step ? 'bg-indigo-500' : 'bg-slate-700'
               }`}
             />
           ))}
@@ -99,16 +104,16 @@ export default function OnboardingPage() {
       </header>
 
       {/* Content */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full">
+      <div className="relative flex-1 flex items-center justify-center p-6">
+        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl shadow-2xl p-8 max-w-2xl w-full backdrop-blur">
           {/* Step 1: Team Size */}
           {step === 1 && (
             <div className="space-y-6">
               <div className="text-center">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                <h1 className="text-3xl font-bold text-slate-100 mb-2">
                   Welcome to Fathom! 👋
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-slate-400">
                   How many people on your team could use Fathom?
                 </p>
               </div>
@@ -120,8 +125,8 @@ export default function OnboardingPage() {
                     onClick={() => setTeamSize(size)}
                     className={`p-6 border-2 rounded-lg text-center font-medium transition-all ${
                       teamSize === size
-                        ? 'border-blue-600 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-indigo-500 bg-indigo-950/30 text-indigo-300'
+                        : 'border-slate-700 bg-slate-800/20 text-slate-300 hover:border-slate-600'
                     }`}
                   >
                     {size} people
@@ -132,7 +137,7 @@ export default function OnboardingPage() {
               <button
                 onClick={handleNext}
                 disabled={!teamSize}
-                className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all shadow-lg hover:shadow-indigo-500/25"
               >
                 Next
               </button>
@@ -143,10 +148,10 @@ export default function OnboardingPage() {
           {step === 2 && (
             <div className="space-y-6">
               <div className="text-center">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                <h1 className="text-3xl font-bold text-slate-100 mb-2">
                   Invite your teammates
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-slate-400">
                   Get your team started with Fathom today
                 </p>
               </div>
@@ -159,12 +164,12 @@ export default function OnboardingPage() {
                     value={email}
                     onChange={(e) => updateEmail(index, e.target.value)}
                     placeholder="teammate@company.com"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   />
                 ))}
                 <button
                   onClick={addEmailField}
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  className="text-indigo-400 hover:text-indigo-300 text-sm font-medium transition-colors"
                 >
                   + Add another email
                 </button>
@@ -173,13 +178,13 @@ export default function OnboardingPage() {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={handleNext}
-                  className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                  className="w-full py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-indigo-500/25"
                 >
                   Send Invites
                 </button>
                 <button
                   onClick={handleNext}
-                  className="text-gray-600 hover:text-gray-900 text-sm"
+                  className="text-slate-400 hover:text-slate-300 text-sm transition-colors"
                 >
                   Skip and do this later
                 </button>
@@ -191,10 +196,10 @@ export default function OnboardingPage() {
           {step === 3 && (
             <div className="space-y-6">
               <div className="text-center">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                <h1 className="text-3xl font-bold text-slate-100 mb-2">
                   Configure sharing settings
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-slate-400">
                   Control how your meetings are shared
                 </p>
               </div>
@@ -202,13 +207,13 @@ export default function OnboardingPage() {
               <div className="space-y-6">
                 {/* Share existing recordings */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Share existing external recordings
                   </label>
                   <select
                     value={shareExisting}
                     onChange={(e) => setShareExisting(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   >
                     <option value="private">Keep private</option>
                     <option value="team">Share with team</option>
@@ -217,19 +222,19 @@ export default function OnboardingPage() {
                 </div>
 
                 {/* Share new meetings toggle */}
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between p-4 bg-slate-800/30 border border-slate-700 rounded-lg">
                   <div>
-                    <p className="font-medium text-gray-900">
+                    <p className="font-medium text-slate-100">
                       Share new external meetings by default
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-slate-400">
                       Automatically share new recordings with your team
                     </p>
                   </div>
                   <button
                     onClick={() => setShareNewByDefault(!shareNewByDefault)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      shareNewByDefault ? 'bg-blue-600' : 'bg-gray-300'
+                      shareNewByDefault ? 'bg-indigo-600' : 'bg-slate-700'
                     }`}
                   >
                     <span
@@ -243,7 +248,7 @@ export default function OnboardingPage() {
 
               <button
                 onClick={handleNext}
-                className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-indigo-500/25"
               >
                 Next
               </button>
@@ -254,10 +259,10 @@ export default function OnboardingPage() {
           {step === 4 && (
             <div className="space-y-6">
               <div className="text-center">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                <h1 className="text-3xl font-bold text-slate-100 mb-2">
                   Connect your CRM
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-slate-400">
                   Sync your meetings with your favorite tools
                 </p>
               </div>
@@ -269,12 +274,14 @@ export default function OnboardingPage() {
                     onClick={() => setSelectedCRM(crm.name)}
                     className={`p-6 border-2 rounded-lg text-center transition-all ${
                       selectedCRM === crm.name
-                        ? 'border-blue-600 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-emerald-500 bg-emerald-950/30'
+                        : 'border-slate-700 bg-slate-800/20 hover:border-slate-600'
                     }`}
                   >
                     <div className="text-3xl mb-2">{crm.icon}</div>
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className={`text-sm font-medium ${
+                      selectedCRM === crm.name ? 'text-emerald-300' : 'text-slate-300'
+                    }`}>
                       {crm.name}
                     </div>
                   </button>
@@ -283,7 +290,7 @@ export default function OnboardingPage() {
 
               <button
                 onClick={handleNext}
-                className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                className="w-full py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-lg font-medium transition-all shadow-lg hover:shadow-emerald-500/25"
               >
                 Complete Setup
               </button>
@@ -291,7 +298,7 @@ export default function OnboardingPage() {
           )}
 
           {/* Step indicator text */}
-          <p className="text-center text-sm text-gray-500 mt-6">
+          <p className="text-center text-sm text-slate-500 mt-6">
             Step {step} of 4
           </p>
         </div>

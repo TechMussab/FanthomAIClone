@@ -4,12 +4,23 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase credentials not found. Using mock data fallback.')
+  console.warn('Supabase credentials not found in environment variables.')
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Database types
+// User interface
+export interface UserRecord {
+  id: string
+  email: string
+  password_hash: string
+  full_name: string
+  team_size?: string
+  crm_selected?: string
+  created_at?: string
+}
+
+// Meeting interface
 export interface Meeting {
   id: string
   title: string
@@ -60,7 +71,71 @@ export interface OnboardingData {
   created_at?: string
 }
 
-// Helper functions for database operations
+// --- USER & AUTH DATABASE HELPERS ---
+
+export async function getUserByEmail(email: string): Promise<UserRecord | null> {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .maybeSingle()
+
+    if (error) {
+      console.error('[DB] Error fetching user by email:', error)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.error('[DB] User query exception:', err)
+    return null
+  }
+}
+
+export async function createUserRecord(user: Omit<UserRecord, 'id' | 'created_at'>): Promise<UserRecord | null> {
+  try {
+    const newUser = {
+      ...user,
+      email: user.email.toLowerCase(),
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .insert([newUser])
+      .select()
+      .single()
+
+    if (error) {
+      console.error('[DB] Error creating user record:', error)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.error('[DB] User insert exception:', err)
+    return null
+  }
+}
+
+export async function updateUserOnboarding(userId: string, teamSize: string, crmSelected: string) {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .update({ team_size: teamSize, crm_selected: crmSelected })
+      .eq('id', userId)
+      .select()
+
+    if (error) {
+      console.error('[DB] Error updating user onboarding info:', error)
+    }
+    return data
+  } catch (err) {
+    console.error('[DB] Update user exception:', err)
+    return null
+  }
+}
+
+// --- MEETINGS DATABASE HELPERS ---
+
 export async function getMeetings(): Promise<Meeting[]> {
   try {
     const { data, error } = await supabase
@@ -69,13 +144,12 @@ export async function getMeetings(): Promise<Meeting[]> {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching meetings:', error)
+      console.error('[DB] Error fetching meetings:', error)
       return []
     }
-
     return data || []
   } catch (error) {
-    console.error('Database error:', error)
+    console.error('[DB] Database error:', error)
     return []
   }
 }
@@ -89,13 +163,12 @@ export async function getMeetingById(id: string): Promise<Meeting | null> {
       .single()
 
     if (error) {
-      console.error('Error fetching meeting:', error)
+      console.error('[DB] Error fetching meeting:', error)
       return null
     }
-
     return data
   } catch (error) {
-    console.error('Database error:', error)
+    console.error('[DB] Database error:', error)
     return null
   }
 }
@@ -109,53 +182,33 @@ export async function createMeeting(meeting: Omit<Meeting, 'id' | 'created_at' |
       .single()
 
     if (error) {
-      console.error('Error creating meeting:', error)
+      console.error('[DB] Error creating meeting:', error)
       return null
     }
-
     return data
   } catch (error) {
-    console.error('Database error:', error)
+    console.error('[DB] Database error:', error)
     return null
   }
 }
+
+// --- ONBOARDING DATABASE HELPERS ---
 
 export async function saveOnboardingData(data: OnboardingData): Promise<OnboardingData | null> {
   try {
     const { data: result, error } = await supabase
       .from('onboarding')
-      .insert([data])
+      .upsert([data], { onConflict: 'user_id' })
       .select()
       .single()
 
     if (error) {
-      console.error('Error saving onboarding data:', error)
+      console.error('[DB] Error saving onboarding data:', error)
       return null
     }
-
     return result
   } catch (error) {
-    console.error('Database error:', error)
-    return null
-  }
-}
-
-export async function getOnboardingData(userId: string): Promise<OnboardingData | null> {
-  try {
-    const { data, error } = await supabase
-      .from('onboarding')
-      .select('*')
-      .eq('user_id', userId)
-      .single()
-
-    if (error) {
-      console.error('Error fetching onboarding data:', error)
-      return null
-    }
-
-    return data
-  } catch (error) {
-    console.error('Database error:', error)
+    console.error('[DB] Database error:', error)
     return null
   }
 }

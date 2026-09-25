@@ -54,6 +54,34 @@ CREATE POLICY "Allow public update to meetings" ON meetings FOR UPDATE USING (tr
 DROP POLICY IF EXISTS "Allow public access to onboarding" ON onboarding;
 CREATE POLICY "Allow public access to onboarding" ON onboarding FOR ALL USING (true);
 
+-- 3. Users Table
+CREATE TABLE IF NOT EXISTS users (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  team_size TEXT,
+  crm_selected TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Enable RLS on users table
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy: Allow public registration (insert)
+DROP POLICY IF EXISTS "Allow public insert to users" ON users;
+CREATE POLICY "Allow public insert to users" ON users FOR INSERT WITH CHECK (true);
+
+-- RLS Policy: Allow public read (for login)
+DROP POLICY IF EXISTS "Allow public read to users" ON users;
+CREATE POLICY "Allow public read to users" ON users FOR SELECT USING (true);
+
+-- Insert demo user
+INSERT INTO users (email, password_hash, full_name, team_size, crm_selected) VALUES
+  ('demo@fathom.com', 'demo123', 'Demo User', '1-5', 'None')
+ON CONFLICT (email) DO NOTHING;
+
 -- 6. Insert All 6 Seed Meetings (YouTube + 5 Mock Calls)
 INSERT INTO meetings (id, title, date, duration, video_url, youtube_id, type, summaries, attendees, transcript, highlights) VALUES
 (
