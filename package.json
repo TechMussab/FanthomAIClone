@@ -9,11 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.48.1",
+    "@supabase/supabase-js": "^2.117.2",
+    "install": "^0.13.0",
     "next": "^16.3.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-youtube": "^10.1.0"
+    "react-youtube": "^10.1.0",
+    "to": "^0.2.9"
   },
   "devDependencies": {
     "@types/node": "^20",

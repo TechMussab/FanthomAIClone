@@ -1,6 +1,5 @@
 'use client'
 
-import { meetings, ytArchitectureMeeting } from '@/src/data/meetings'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { logoutAction } from '@/lib/actions'
@@ -10,57 +9,79 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [user, setUser] = useState<{ id: string; email: string; name: string } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [allMeetings, setAllMeetings] = useState<any[]>([])
+  const [error, setError] = useState('')
   const router = useRouter()
 
   useEffect(() => {
-    // Check if user is logged in by looking for auth cookie
-    const checkAuth = async () => {
+    const init = async () => {
       try {
-        const response = await fetch('/api/auth/check')
-        if (response.ok) {
-          const userData = await response.json()
-          setUser(userData)
-
-          // Check onboarding status
-          const onboardingComplete = localStorage.getItem('fathom_onboarding_complete')
-          if (!onboardingComplete) {
-            router.push('/onboarding')
-            return
-          }
-        } else {
+        // 1. Check Auth
+        const authRes = await fetch('/api/auth/check')
+        if (!authRes.ok) {
           router.push('/login')
+          return
         }
-      } catch {
-        router.push('/login')
+        const userData = await authRes.json()
+        setUser(userData)
+
+        // 2. Check Onboarding
+        const onboardingComplete = localStorage.getItem('fathom_onboarding_complete')
+        if (!onboardingComplete) {
+          router.push('/onboarding')
+          return
+        }
+
+        // 3. Fetch Meetings from Database / API - NO FALLBACK
+        console.log('[Dashboard] Fetching meetings from /api/meetings')
+        const meetingsRes = await fetch('/api/meetings')
+        if (!meetingsRes.ok) {
+          throw new Error(`API error: ${meetingsRes.status}`)
+        }
+        const dbMeetings = await meetingsRes.json()
+
+        if (!Array.isArray(dbMeetings)) {
+          throw new Error('Invalid response format from database')
+        }
+
+        if (dbMeetings.length === 0) {
+          setError('No meetings found in database. Please configure Supabase and seed data.')
+          console.warn('[Dashboard] Database is empty - add meetings via /api/meetings POST')
+        }
+
+        console.log(`[Dashboard] Retrieved ${dbMeetings.length} meetings from database`)
+        setAllMeetings(dbMeetings)
+      } catch (err) {
+        console.error('[Dashboard] Error:', err)
+        setError(`Database connection failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+        setAllMeetings([])
       } finally {
         setIsLoading(false)
       }
     }
 
-    checkAuth()
+    init()
   }, [router])
 
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
-        <p className="text-gray-600">Loading...</p>
+        <p className="text-gray-600">Loading meetings from database...</p>
       </div>
     )
   }
 
-  // Combine regular meetings with YouTube meeting
-  const allMeetings = [ytArchitectureMeeting, ...meetings]
-
   const filteredMeetings = allMeetings.filter((meeting) => {
     const query = searchQuery.toLowerCase()
-    return (
-      meeting.title.toLowerCase().includes(query) ||
-      meeting.attendees.some((a) => a.name.toLowerCase().includes(query)) ||
-      meeting.transcript.some((t) => {
-        const text = 'text' in t ? t.text : ''
-        return text.toLowerCase().includes(query)
-      })
+    const titleMatch = (meeting.title || '').toLowerCase().includes(query)
+    const attendeeMatch = Array.isArray(meeting.attendees) && meeting.attendees.some((a: any) =>
+      (a.name || '').toLowerCase().includes(query)
     )
+    const transcriptMatch = Array.isArray(meeting.transcript) && meeting.transcript.some((t: any) => {
+      const text = t.text || ''
+      return text.toLowerCase().includes(query)
+    })
+    return titleMatch || attendeeMatch || transcriptMatch
   })
 
   return (
@@ -96,8 +117,8 @@ export default function DashboardPage() {
         </nav>
         <div className="p-4 space-y-4 border-t border-gray-200">
           <div className="px-4 py-3 bg-blue-50 rounded-lg text-xs text-blue-700">
-            <p className="font-semibold mb-1">Web Application Portal</p>
-            <p className="text-blue-600">Recording Bot Stubbed for Web Execution</p>
+            <p className="font-semibold mb-1">Live Database Connection</p>
+            <p className="text-blue-600">Supabase PostgreSQL</p>
           </div>
           {user && (
             <div className="px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
@@ -144,53 +165,68 @@ export default function DashboardPage() {
 
         {/* Meeting Grid */}
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-4xl grid gap-4">
-            {filteredMeetings.map((meeting) => (
-              <Link
-                key={meeting.id}
-                href={`/meetings/${meeting.id}`}
-                className="block bg-white rounded-lg border border-gray-200 hover:shadow-lg transition-shadow p-6"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{meeting.title}</h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {new Date(meeting.date).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                      {' · '}
-                      {Math.floor(Number(meeting.duration) / 60)} min
-                    </p>
-                  </div>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                    Recorded
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 mb-3">
-                  {meeting.attendees.slice(0, 5).map((attendee) => (
-                    <img
-                      key={attendee.id}
-                      src={attendee.avatar}
-                      alt={attendee.name}
-                      className="w-8 h-8 rounded-full border-2 border-white"
-                      title={attendee.name}
-                    />
-                  ))}
-                  {meeting.attendees.length > 5 && (
-                    <span className="text-xs text-gray-500">
-                      +{meeting.attendees.length - 5} more
-                    </span>
-                  )}
-                </div>
-
-                <p className="text-sm text-gray-600 line-clamp-2">
-                  {meeting.summaries.executive}
+          <div className="max-w-4xl">
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-700">{error}</p>
+                <p className="text-xs text-red-600 mt-2">
+                  Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local
                 </p>
-              </Link>
-            ))}
+              </div>
+            )}
+
+            {filteredMeetings.length === 0 && !error && (
+              <p className="text-gray-500">No meetings found.</p>
+            )}
+
+            <div className="grid gap-4">
+              {filteredMeetings.map((meeting) => (
+                <Link
+                  key={meeting.id}
+                  href={`/meetings/${meeting.id}`}
+                  className="block bg-white rounded-lg border border-gray-200 hover:shadow-lg transition-shadow p-6"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">{meeting.title}</h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {new Date(meeting.date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                        {' · '}
+                        {typeof meeting.duration === 'string' ? meeting.duration : `${Math.floor(Number(meeting.duration) / 60)} min`}
+                      </p>
+                    </div>
+                    <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                      Recorded
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-3">
+                    {Array.isArray(meeting.attendees) && meeting.attendees.slice(0, 5).map((attendee: any, idx: number) => (
+                      <img
+                        key={attendee.id || idx}
+                        src={attendee.avatar}
+                        alt={attendee.name}
+                        className="w-8 h-8 rounded-full border-2 border-white"
+                        title={attendee.name}
+                      />
+                    ))}
+                    {Array.isArray(meeting.attendees) && meeting.attendees.length > 5 && (
+                      <span className="text-xs text-gray-500">
+                        +{meeting.attendees.length - 5} more
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-sm text-gray-600 line-clamp-2">
+                    {meeting.summaries?.executive}
+                  </p>
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </main>

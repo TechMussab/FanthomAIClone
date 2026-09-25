@@ -13,16 +13,43 @@ export default function OnboardingPage() {
   const [selectedCRM, setSelectedCRM] = useState('')
   const router = useRouter()
 
-  const completeOnboarding = () => {
+  const completeOnboarding = async () => {
+    try {
+      // Save onboarding data to database
+      const response = await fetch('/api/onboarding', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: 'demo-user', // In production, get from auth context
+          team_size: teamSize,
+          invited_emails: emails.filter(e => e.trim() !== ''),
+          share_existing: shareExisting,
+          share_new_by_default: shareNewByDefault,
+          selected_crm: selectedCRM,
+        }),
+      })
+
+      if (response.ok) {
+        console.log('[Onboarding] Data saved to database successfully')
+      } else {
+        console.warn('[Onboarding] Failed to save to database, continuing anyway')
+      }
+    } catch (error) {
+      console.error('[Onboarding] Error saving data:', error)
+    }
+
+    // Mark onboarding complete in localStorage
     localStorage.setItem('fathom_onboarding_complete', 'true')
     router.push('/')
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < 4) {
       setStep(step + 1)
     } else {
-      completeOnboarding()
+      await completeOnboarding()
     }
   }
 

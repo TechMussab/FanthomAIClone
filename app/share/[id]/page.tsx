@@ -1,6 +1,6 @@
 'use client'
 
-import { meetings, ytArchitectureMeeting } from '@/src/data/meetings'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { use } from 'react'
 
@@ -12,23 +12,55 @@ interface SharedMeetingPageProps {
 
 export default function SharedMeetingPage({ params }: SharedMeetingPageProps) {
   const { id } = use(params)
+  const [meeting, setMeeting] = useState<any | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  // Support both regular meetings and YouTube meetings
-  let meeting: typeof meetings[0] | typeof ytArchitectureMeeting | undefined
-  if (id === 'meeting-mvvm-vs-mvi') {
-    meeting = ytArchitectureMeeting
-  } else {
-    meeting = meetings.find((m) => m.id === id)
+  // Fetch from database - NO FALLBACK
+  useEffect(() => {
+    const fetchMeeting = async () => {
+      try {
+        console.log(`[SharedView] Fetching meeting from /api/meetings?id=${id}`)
+        const res = await fetch(`/api/meetings?id=${id}`)
+        if (!res.ok) {
+          if (res.status === 404) {
+            throw new Error('Meeting not found in database')
+          }
+          throw new Error(`API error: ${res.status}`)
+        }
+        const data = await res.json()
+        setMeeting(data)
+        console.log(`[SharedView] Meeting loaded: ${data.title}`)
+      } catch (err) {
+        console.error('[SharedView] Error:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load meeting')
+        setMeeting(null)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (id) {
+      fetchMeeting()
+    }
+  }, [id])
+
+  const isYouTube = meeting && meeting.type === 'youtube'
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <p className="text-gray-600">Loading shared meeting...</p>
+      </div>
+    )
   }
 
-  const isYouTube = meeting && 'type' in meeting && meeting.type === 'youtube'
-
-  if (!meeting) {
+  if (error || !meeting) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Meeting not found</h1>
-          <p className="text-gray-600 mb-6">This shared link may have expired or been removed.</p>
+          <p className="text-gray-600 mb-6">{error || 'This shared link may have expired or been removed.'}</p>
           <Link href="/" className="text-blue-600 hover:underline">
             Return to homepage
           </Link>
@@ -61,18 +93,18 @@ export default function SharedMeetingPage({ params }: SharedMeetingPageProps) {
                 year: 'numeric',
               })}
               {' · '}
-              {typeof meeting.duration === 'string' ? meeting.duration : `${Math.floor(meeting.duration / 60)} minutes`}
+              {typeof meeting.duration === 'string' ? meeting.duration : `${Math.floor(Number(meeting.duration) / 60)} minutes`}
               {isYouTube && ' · YouTube Video'}
             </p>
           </div>
 
           {/* Video Player */}
           <div className="bg-black aspect-video">
-            {isYouTube && 'youtubeId' in meeting ? (
+            {isYouTube ? (
               <iframe
                 width="100%"
                 height="100%"
-                src={`https://www.youtube.com/embed/${meeting.youtubeId}`}
+                src={`https://www.youtube.com/embed/${meeting.youtube_id || meeting.youtubeId}`}
                 title={meeting.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -80,7 +112,7 @@ export default function SharedMeetingPage({ params }: SharedMeetingPageProps) {
               />
             ) : (
               <video
-                src={'videoUrl' in meeting ? meeting.videoUrl : ''}
+                src={meeting.video_url || meeting.videoUrl}
                 controls
                 className="w-full h-full"
               />
@@ -92,11 +124,11 @@ export default function SharedMeetingPage({ params }: SharedMeetingPageProps) {
             {/* Summary */}
             <div className="col-span-2">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Executive Summary</h2>
-              <p className="text-gray-700 leading-relaxed mb-6">{meeting.summaries.executive}</p>
+              <p className="text-gray-700 leading-relaxed mb-6">{meeting.summaries?.executive}</p>
 
               <h2 className="text-xl font-bold text-gray-900 mb-4">Key Action Items</h2>
               <ul className="space-y-2">
-                {meeting.summaries.actionItems.map((item, idx) => (
+                {Array.isArray(meeting.summaries?.actionItems) && meeting.summaries.actionItems.map((item: string, idx: number) => (
                   <li key={idx} className="flex gap-2">
                     <span className="text-blue-600 mt-1">✓</span>
                     <span className="text-gray-700">{item}</span>
@@ -109,7 +141,7 @@ export default function SharedMeetingPage({ params }: SharedMeetingPageProps) {
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-4">Attendees</h2>
               <div className="space-y-3">
-                {meeting.attendees.map((attendee, idx) => (
+                {Array.isArray(meeting.attendees) && meeting.attendees.map((attendee: any, idx: number) => (
                   <div key={idx} className="flex items-center gap-3">
                     <img
                       src={attendee.avatar}
