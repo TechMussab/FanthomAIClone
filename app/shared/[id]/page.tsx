@@ -1,6 +1,6 @@
 'use client'
 
-import { meetings } from '@/src/data/meetings'
+import { meetings, ytArchitectureMeeting } from '@/src/data/meetings'
 import Link from 'next/link'
 import { use } from 'react'
 
@@ -12,7 +12,16 @@ interface SharedMeetingPageProps {
 
 export default function SharedMeetingPage({ params }: SharedMeetingPageProps) {
   const { id } = use(params)
-  const meeting = meetings.find((m) => m.id === id)
+
+  // Support both regular meetings and YouTube meetings
+  let meeting: typeof meetings[0] | typeof ytArchitectureMeeting | undefined
+  if (id === 'meeting-mvvm-vs-mvi') {
+    meeting = ytArchitectureMeeting
+  } else {
+    meeting = meetings.find((m) => m.id === id)
+  }
+
+  const isYouTube = meeting && 'type' in meeting && meeting.type === 'youtube'
 
   if (!meeting) {
     return (
@@ -52,17 +61,30 @@ export default function SharedMeetingPage({ params }: SharedMeetingPageProps) {
                 year: 'numeric',
               })}
               {' · '}
-              {Math.floor(meeting.duration / 60)} minutes
+              {typeof meeting.duration === 'string' ? meeting.duration : `${Math.floor(meeting.duration / 60)} minutes`}
+              {isYouTube && ' · YouTube Video'}
             </p>
           </div>
 
           {/* Video Player */}
           <div className="bg-black aspect-video">
-            <video
-              src={meeting.videoUrl}
-              controls
-              className="w-full h-full"
-            />
+            {isYouTube && 'youtubeId' in meeting ? (
+              <iframe
+                width="100%"
+                height="100%"
+                src={`https://www.youtube.com/embed/${meeting.youtubeId}`}
+                title={meeting.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+              />
+            ) : (
+              <video
+                src={'videoUrl' in meeting ? meeting.videoUrl!! : ''}
+                controls
+                className="w-full h-full"
+              />
+            )}
           </div>
 
           {/* Content Grid */}
@@ -87,8 +109,8 @@ export default function SharedMeetingPage({ params }: SharedMeetingPageProps) {
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-4">Attendees</h2>
               <div className="space-y-3">
-                {meeting.attendees.map((attendee) => (
-                  <div key={attendee.id} className="flex items-center gap-3">
+                {meeting.attendees.map((attendee, idx) => (
+                  <div key={idx} className="flex items-center gap-3">
                     <img
                       src={attendee.avatar}
                       alt={attendee.name}
