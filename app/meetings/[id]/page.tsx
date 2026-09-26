@@ -23,7 +23,7 @@ export default function MeetingDetailPage({ params }: MeetingDetailPageProps) {
   const [copiedLink, setCopiedLink] = useState(false)
 
   // Refs
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const videoRef = useRef<HTMLIFrameElement>(null)
   const youtubeRef = useRef<any>(null)
 
   const isYouTube = Boolean(meeting && (meeting.type === 'youtube' || meeting.youtube_id || meeting.youtubeId))
@@ -33,16 +33,61 @@ export default function MeetingDetailPage({ params }: MeetingDetailPageProps) {
     if (isYouTube && youtubeRef.current) {
       youtubeRef.current.internalPlayer?.seekTo(timestamp, true)
     } else if (!isYouTube && videoRef.current) {
-      videoRef.current.currentTime = timestamp
+      // videoRef.current.src = `${videoRef.current.src.split('?')[0]}?t=${timestamp}`
+      if (videoRef.current) {
+        videoRef.current.contentWindow!!.postMessage(
+          {
+            method: "setCurrentTime",
+            value: timestamp,
+            context: "player.js",
+          },
+          "*"
+        );
+    }
     }
   }, [isYouTube])
 
   // Native HTML5 video time update
-  const handleVideoTimeUpdate = useCallback(() => {
-    if (!isYouTube && videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime)
-    }
-  }, [isYouTube])
+  // const handleVideoTimeUpdate = useCallback((event: React.SyntheticEvent<HTMLVideoElement>) => {
+  // if (!isYouTube) {
+  //   // Correct way to read current time from a native HTML5 video event emitter
+  //   setCurrentTime(event.currentTarget.currentTime);
+  // }
+  // }, [isYouTube]);
+ useEffect(() => {
+    const handleMessage = (event: any) => {
+      // 1. Log everything to inspect incoming payloads
+      try {
+        const data = JSON.parse(event.data);
+      if (data && data.context === "player.js") {
+        // 2. CRITICAL STEP: When Loom is ready, subscribe to the timeupdate event
+        if (data.event === "ready") {
+          if (videoRef.current) {
+            videoRef.current.contentWindow!!.postMessage(
+              {
+                method: "addEventListener",
+                value: "timeupdate",
+                context: "player.js",
+              },
+              "*"
+            );
+          }
+        }
+
+        // 3. Catch the stream updates once subscribed
+        if (data.event === "timeupdate") {
+          setCurrentTime(data.value.seconds);
+        }
+      }
+      } catch (error) {
+        console.error("Error parsing message from iframe:", error);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [videoRef.current]);
+  //
 
   // YouTube player state change / polling interval
   const handleYouTubeStateChange = useCallback((event: any) => {
@@ -225,15 +270,24 @@ export default function MeetingDetailPage({ params }: MeetingDetailPageProps) {
                   ref={youtubeRef}
                   className="w-full h-full"
                 />
-              ) : (
-                <video
-                  ref={videoRef}
-                  src={meeting.video_url || meeting.videoUrl || undefined}
-                  onTimeUpdate={handleVideoTimeUpdate}
-                  controls
-                  className="w-full h-full"
-                />
-              )}
+              ) :
+              <iframe 
+              ref={videoRef} src={meeting.video_url || meeting.videoUrl || undefined} 
+              title={meeting.title} 
+              className="w-full h-full border-0" allow="autoplay; fullscreen" 
+              
+              allowFullScreen /> 
+              
+              // (
+              //   <video
+              //     ref={videoRef}
+              //     src={meeting.video_url || meeting.videoUrl || undefined}
+              //     onTimeUpdate={handleVideoTimeUpdate}
+              //     controls
+              //     className="w-full h-full"
+              //   />
+              // )
+              }
             </div>
           </div>
 
