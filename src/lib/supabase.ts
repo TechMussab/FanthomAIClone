@@ -194,6 +194,25 @@ export async function createMeeting(meeting: Omit<Meeting, 'id' | 'created_at' |
 
 // --- ONBOARDING DATABASE HELPERS ---
 
+export async function getOnboardingData(userId: string): Promise<OnboardingData | null> {
+  try {
+    const { data, error } = await supabase
+      .from('onboarding')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (error) {
+      console.error('[DB] Error fetching onboarding data:', error)
+      return null
+    }
+    return data
+  } catch (error) {
+    console.error('[DB] Database error:', error)
+    return null
+  }
+}
+
 export async function saveOnboardingData(data: OnboardingData): Promise<OnboardingData | null> {
   try {
     const { data: result, error } = await supabase
