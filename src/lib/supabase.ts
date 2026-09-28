@@ -13,10 +13,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export interface UserRecord {
   id: string
   email: string
-  password_hash: string
+  password_hash: string // This will store the hashed password
   full_name: string
-  team_size?: string
-  crm_selected?: string
+  team_size?: string | null // Optional onboarding data
+  crm_selected?: string | null // Optional onboarding data
   created_at?: string
 }
 
@@ -92,7 +92,7 @@ export async function getUserByEmail(email: string): Promise<UserRecord | null> 
   }
 }
 
-export async function createUserRecord(user: Omit<UserRecord, 'id' | 'created_at'>): Promise<UserRecord | null> {
+export async function createUserRecord(user: Omit<UserRecord, 'id' | 'created_at' | 'updated_at'>): Promise<UserRecord | null> {
   try {
     const newUser = {
       ...user,
